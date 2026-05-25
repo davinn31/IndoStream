@@ -7,7 +7,7 @@ import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.utils.*
 import java.net.URI
-import java.util.Base64
+import android.util.Base64
 import org.jsoup.nodes.Element
 
 class Idlix : MainAPI() {
@@ -274,7 +274,7 @@ class Idlix : MainAPI() {
 
         val paddedM = addBase64Padding(reversedM)
         val decodedBytes =
-            Base64.getDecoder().decode(paddedM) // Menggunakan Base64.getDecoder().decode
+            Base64.decode(paddedM, Base64.DEFAULT) // Menggunakan android.util.Base64.decode
         val decodedM = String(decodedBytes, Charsets.UTF_8)
 
         return decodedM.split("|").joinToString("") { "\\x${rList.getOrNull(it.toInt()) ?: "00"}" }

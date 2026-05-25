@@ -1,12 +1,9 @@
 package com.neonime
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.LoadResponse.Companion.addAniListId
-import com.lagradost.cloudstream3.LoadResponse.Companion.addMalId
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 import java.net.URI
 
@@ -72,18 +69,13 @@ class Neonime : MainAPI() {
                     }
                 }
 
-//                title = when {
-//                    title.contains("youkoso-jitsuryoku") && !title.contains("-season") -> title.replace("-e-", "-e-tv-")
-//                    else -> title
-//                }
-
                 "$baseUrl/tvshows/$title"
             }
             else -> uri
         }
     }
 
-    private fun Element.toSearchResult(): AnimeSearchResponse? {
+    private fun Element.toSearchResult(): SearchResponse? {
         val title = this.selectFirst("td.bb a")?.ownText() ?: this.selectFirst("h2")?.text() ?: return null
         val href = getProperAnimeLink(fixUrl(this.select("a").attr("href")))
         val posterUrl = fixUrl(this.select("img").attr("data-src"))
@@ -122,18 +114,14 @@ class Neonime : MainAPI() {
             val mTitle = document.selectFirst(".sbox > .data > h1[itemprop = name]")?.text().toString().replace("Subtitle Indonesia", "").trim()
             val mPoster = document.selectFirst(".sbox > .imagen > .fix > img[itemprop = image]")?.attr("data-src")
             val mTrailer = document.selectFirst("div.youtube_id iframe")?.attr("data-wpfc-original-src")?.substringAfterLast("html#")?.let{ "https://www.youtube.com/embed/$it"}
-            val year = document.selectFirst("a[href*=release-year]")!!.text().toIntOrNull()
-            val tracker = APIHolder.getTracker(listOf(mTitle),TrackerType.getTypes(TvType.Movie),year,true)
+            val year = document.selectFirst("a[href*=release-year]")?.text()?.toIntOrNull()
             return newMovieLoadResponse(name = mTitle, url = url, type = TvType.Movie, dataUrl = url) {
-                posterUrl = tracker?.image ?: mPoster
-                backgroundPosterUrl = tracker?.cover
+                posterUrl = mPoster
                 this.year = year
                 plot = document.select("div[itemprop = description]").text().trim()
                 addScore(document.select("span[itemprop = ratingValue]").text())
                 tags = document.select("p.meta_dd > a").map { it.text() }
                 addTrailer(mTrailer)
-                addMalId(tracker?.malId)
-                addAniListId(tracker?.aniId?.toIntOrNull())
             }
         }
         else {
@@ -147,19 +135,15 @@ class Neonime : MainAPI() {
                 val episode = Regex("(\\d+[.,]?\\d*)").find(name)?.groupValues?.getOrNull(0)?.toIntOrNull()
                 newEpisode(link){ this.episode = episode}
             }.reversed()
-            val tracker = APIHolder.getTracker(listOf(title),TrackerType.getTypes(TvType.Anime),year,true)
             return newAnimeLoadResponse(title, url, TvType.Anime) {
                 engName = title
-                posterUrl = tracker?.image ?: poster
-                backgroundPosterUrl = tracker?.cover
+                posterUrl = poster
                 this.year = year
                 addEpisodes(DubStatus.Subbed, episodes)
-                showStatus = getStatus(document.select("div.metadatac > span").last()!!.text().trim())
+                showStatus = getStatus(document.select("div.metadatac > span").last()?.text()?.trim() ?: "")
                 plot = document.select("div[itemprop = description] > p").text().trim()
                 tags = document.select("#info a[href*=\"-genre/\"]").map { it.text() }
                 addTrailer(trailer)
-                addMalId(tracker?.malId)
-                addAniListId(tracker?.aniId?.toIntOrNull())
             }
         }
     }

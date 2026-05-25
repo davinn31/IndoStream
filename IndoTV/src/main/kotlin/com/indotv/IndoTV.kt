@@ -12,7 +12,7 @@ import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.io.InputStream
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
-import java.util.Base64
+import android.util.Base64
 
 class IndoTV : MainAPI() {
     override var lang = "id"
@@ -401,7 +401,7 @@ private fun decodeHex(hexString: String): String {
         byteArray[i / 2] = ((Character.digit(hexString[i], 16) shl 4) +
                 Character.digit(hexString[i + 1], 16)).toByte()
     }
-    val base64String = Base64.getEncoder().withoutPadding().encodeToString(byteArray)
+    val base64String = Base64.encodeToString(byteArray, Base64.NO_PADDING or Base64.NO_WRAP)
     return String(base64String.toByteArray(Charsets.UTF_8), Charsets.UTF_8).trim()
 }
 

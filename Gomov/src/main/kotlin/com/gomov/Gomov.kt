@@ -4,9 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.httpsify
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.*
 import java.net.URI
 import org.jsoup.nodes.Element
 
@@ -120,11 +118,11 @@ open class Gomov : MainAPI() {
         return if (tvType == TvType.TvSeries) {
             val episodes =
                 document.select("div.vid-episodes a, div.gmr-listseries a")
-                    .mapNotNull { epsElement -> // Changed to mapNotNull for safer parsing
+                    .mapNotNull { epsElement -> 
                         val href = fixUrl(epsElement.attr("href"))
                         val name = epsElement.text()
 
-                        val episodeNumber = // Renamed from 'episode' to avoid confusion
+                        val episodeNumber = 
                             name.split(" ")
                                 .lastOrNull()
                                 ?.filter { it.isDigit() }
@@ -132,15 +130,15 @@ open class Gomov : MainAPI() {
 
                         if (episodeNumber == null) return@mapNotNull null
 
-                        val seasonNumber = // Renamed from 'season'
+                        val seasonNumber = 
                             name.split(" ")
                                 .firstOrNull()
                                 ?.filter { it.isDigit() }
                                 ?.toIntOrNull()
-                        newEpisode(href) { // 'href' is the 'data' argument
-                            this.name = name                 // Set the 'name' property (full title)
-                            this.episode = episodeNumber     // Set the 'episode' property (parsed number)
-                            this.season = if (name.contains(" ")) seasonNumber else null // Set season
+                        newEpisode(href) { 
+                            this.name = name                 
+                            this.episode = episodeNumber     
+                            this.season = if (name.contains(" ")) seasonNumber else null
                         }
                     }
                             .filter { it.episode != null }
@@ -179,7 +177,7 @@ open class Gomov : MainAPI() {
         val id = document.selectFirst("div#muvipro_player_content_id")?.attr("data-id")
 
         if (id.isNullOrEmpty()) {
-            document.select("ul.muvipro-player-tabs li a").amap { ele ->
+            document.select("ul#muvipro-player-tabs > li > a").amap { ele ->
                 val iframe =
                         app.get(fixUrl(ele.attr("href")))
                                 .document

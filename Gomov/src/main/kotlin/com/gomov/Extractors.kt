@@ -5,14 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.SubtitleFile
 import com.lagradost.cloudstream3.USER_AGENT
 import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.extractors.VidHidePro
-import com.lagradost.cloudstream3.extractors.helper.AesHelper.cryptoAESHandler
 import com.lagradost.cloudstream3.utils.*
-import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.utils.ExtractorApi
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
-import com.lagradost.cloudstream3.utils.getQualityFromName
 
 class Watchx : Chillx() {
     override val name = "Watchx"
@@ -71,7 +64,7 @@ open class Chillx : ExtractorApi() {
                         ?.get(1)
         val key = fetchKey()
         val decrypt =
-                cryptoAESHandler(master ?: "", key.toByteArray(), false)?.replace("\\", "")
+                com.lagradost.cloudstream3.extractors.helper.AesHelper.cryptoAESHandler(master ?: "", key.toByteArray(), false)?.replace("\\", "")
                         ?: throw ErrorLoadingException("failed to decrypt")
         val source = Regex(""""?file"?:\s*"([^"]+)""").find(decrypt)?.groupValues?.get(1)
         val subtitles = Regex("""subtitle"?:\s*"([^"]+)""").find(decrypt)?.groupValues?.get(1)
@@ -99,7 +92,7 @@ open class Chillx : ExtractorApi() {
                         "Origin" to mainUrl,
                 )
 
-        generateM3u8(name, source ?: return, "$mainUrl/", headers = headers)
+        M3u8Helper.generateM3u8(name, source ?: return, "$mainUrl/", headers = headers)
                 .forEach(callback)
     }
 
@@ -111,12 +104,12 @@ open class Chillx : ExtractorApi() {
     data class Keys(@JsonProperty("chillx") val key: List<String>)
 }
 
-class Dhtpre : JWPlayer() {
+class Dhtpre : LocalJWPlayer() {
     override val name = "Dhtpre"
     override val mainUrl = "https://dhtpre.com"
 }
 
-open class JWPlayer : ExtractorApi() {
+open class LocalJWPlayer : ExtractorApi() {
     override val name = "JWPlayer"
     override val mainUrl = "https://www.jwplayer.com"
     override val requiresReferer = false
@@ -138,7 +131,7 @@ open class JWPlayer : ExtractorApi() {
                         }
                     }
 
-            tryParseJson<List<ResponseSource>>("$data")?.map {
+            AppUtils.tryParseJson<List<ResponseSource>>("$data")?.map {
                 sources.add(
                     newExtractorLink(
                         name,
@@ -165,11 +158,11 @@ open class JWPlayer : ExtractorApi() {
     )
 }
 
-class Filelions : VidHidePro() {
+class Filelions : LocalVidHidePro() {
     override var mainUrl = "https://filelions.site"
 }
 
-open class VidHidePro : ExtractorApi() {
+open class LocalVidHidePro : ExtractorApi() {
     override val name = "VidHidePro"
     override val mainUrl = "https://vidhidepro.com"
     override val requiresReferer = true
@@ -200,7 +193,11 @@ open class VidHidePro : ExtractorApi() {
                 }
         val m3u8 =
                 Regex("file:\\s*\"(.*?m3u8.*?)\"").find(script ?: return)?.groupValues?.getOrNull(1)
-        generateM3u8(name, m3u8 ?: return, mainUrl, headers = headers).forEach(callback)
+        M3u8Helper.generateM3u8(name, m3u8 ?: return, mainUrl, headers = headers).forEach(callback)
+    }
+
+    private fun getAndUnpack(script: String): String {
+        return JsUnpacker(script).unpack() ?: script
     }
 
     private fun getEmbedUrl(url: String): String {

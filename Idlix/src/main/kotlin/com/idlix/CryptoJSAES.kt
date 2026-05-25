@@ -1,5 +1,6 @@
 package com.idlix
 
+import android.util.Base64
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.security.MessageDigest
@@ -35,7 +36,7 @@ object CryptoJsAes {
 
         val encryptedDataObj =
                 EncryptedData(
-                        ct = Base64.getEncoder().encodeToString(encryptedData),
+                        ct = Base64.encodeToString(encryptedData, Base64.NO_WRAP),
                         iv = iv.toHex(),
                         s = salt.toHex()
                 )
@@ -47,7 +48,7 @@ object CryptoJsAes {
         val jsonData = objectMapper.readValue(jsonStr, EncryptedData::class.java)
         val salt = jsonData.s.hexToByteArray()
         val iv = jsonData.iv.hexToByteArray()
-        val ct = Base64.getDecoder().decode(jsonData.ct)
+        val ct = Base64.decode(jsonData.ct, Base64.DEFAULT)
 
         val concatedPassphrase = passphrase.toByteArray() + salt
         var result = MessageDigest.getInstance("MD5").digest(concatedPassphrase)
@@ -79,7 +80,7 @@ fun dec(r: String, e: String): String {
     val mPadded = addBase64Padding(e.reversed())
     val decodedM =
             try {
-                String(Base64.getDecoder().decode(mPadded))
+                String(Base64.decode(mPadded, Base64.DEFAULT))
             } catch (e: IllegalArgumentException) {
                 println("Base64 decoding error: ${e.message}")
                 return ""

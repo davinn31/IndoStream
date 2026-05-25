@@ -4,13 +4,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addScore
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
-import com.lagradost.cloudstream3.MainAPI
-import com.lagradost.cloudstream3.SearchResponse
-import com.lagradost.cloudstream3.TvType
-import com.lagradost.cloudstream3.mainPageOf
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.httpsify
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.*
 import java.net.URI
 import org.jsoup.nodes.Element
 
@@ -121,7 +115,7 @@ class DutaMovie : MainAPI() {
         return if (tvType == TvType.TvSeries) {
             val episodes =
                     document.select("div.vid-episodes a, div.gmr-listseries a")
-                            .map { eps ->
+                            .mapNotNull { eps ->
                                 val href = fixUrl(eps.attr("href"))
                                 val name = eps.text()
                                 val episode =

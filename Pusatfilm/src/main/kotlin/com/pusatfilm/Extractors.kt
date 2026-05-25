@@ -1,12 +1,7 @@
 package com.pusatfilm
 
-import com.lagradost.cloudstream3.SubtitleFile
-import com.lagradost.cloudstream3.apmap
-import com.lagradost.cloudstream3.app
-import com.lagradost.cloudstream3.base64Decode
-import com.lagradost.cloudstream3.utils.ExtractorApi
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.utils.*
 
 open class Kotakajaib : ExtractorApi() {
     override val name = "Kotakajaib"
@@ -19,7 +14,7 @@ open class Kotakajaib : ExtractorApi() {
             subtitleCallback: (SubtitleFile) -> Unit,
             callback: (ExtractorLink) -> Unit
     ) {
-        app.get(url, referer = referer).document.select("ul#dropdown-server li a").apmap {
+        app.get(url, referer = referer).document.select("ul#dropdown-server li a").amap {
             loadExtractor(
                     base64Decode(it.attr("data-frame")),
                     "$mainUrl/",

@@ -9,8 +9,11 @@ android {
     }
     defaultConfig {
         val properties = Properties()
-        properties.load(project.rootProject.file("local.properties").inputStream())
-        buildConfigField("String", "ZSHOW_API", "\"${properties.getProperty("ZSHOW_API")}\"")
+        val localPropertiesFile = project.rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(localPropertiesFile.inputStream())
+        }
+        buildConfigField("String", "ZSHOW_API", "\"${properties.getProperty("ZSHOW_API") ?: ""}\"")
     }
 }
 

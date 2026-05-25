@@ -1,12 +1,9 @@
 package com.dubbindo
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
-import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
-import com.lagradost.cloudstream3.utils.ExtractorLink
-import com.lagradost.cloudstream3.utils.newExtractorLink
-import com.lagradost.cloudstream3.utils.Qualities
-import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.*
 import org.jsoup.nodes.Element
 
 class Dubbindo : MainAPI() {
@@ -15,6 +12,8 @@ class Dubbindo : MainAPI() {
     override val hasMainPage = true
     override var lang = "id"
     override val hasDownloadSupport = true
+    
+    private val objectMapper = ObjectMapper()
 
     override val supportedTypes =
             setOf(
@@ -38,10 +37,7 @@ class Dubbindo : MainAPI() {
         val home =
                 document.select("div.videos-latest-list.pt_timeline_vids div.video-wrapper")
                         .mapNotNull { it.toSearchResult() }
-        return newHomePageResponse(
-                list = HomePageList(name = request.name, list = home, isHorizontalImages = true),
-                hasNext = true
-        )
+        return newHomePageResponse(request.name, home)
     }
 
     private fun Element.toSearchResult(): TvSeriesSearchResponse? {
@@ -55,7 +51,7 @@ class Dubbindo : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val searchResponse = mutableListOf<SearchResponse>()
-        for (i in 1..10) {
+        for (i in 1..5) {
             val document =
                     app.get(
                                     "$mainUrl/search?keyword=$query&page_id=$i",
@@ -65,8 +61,8 @@ class Dubbindo : MainAPI() {
                     document.select("div.videos-latest-list.row div.video-wrapper").mapNotNull {
                         it.toSearchResult()
                     }
-            searchResponse.addAll(results)
             if (results.isEmpty()) break
+            searchResponse.addAll(results)
         }
         return searchResponse
     }
@@ -89,7 +85,7 @@ class Dubbindo : MainAPI() {
                     )
                 }
 
-        return newMovieLoadResponse(title, url, TvType.Movie, video.toJson()) {
+        return newMovieLoadResponse(title, url, TvType.Movie, objectMapper.writeValueAsString(video)) {
             posterUrl = poster
             plot = description
             this.tags = tags
@@ -104,7 +100,7 @@ class Dubbindo : MainAPI() {
             callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        tryParseJson<List<Video>>(data)?.map { video ->
+        AppUtils.tryParseJson<List<Video>>(data)?.amap { video ->
             if (video.type == "video/mp4" ||
                             video.type == "video/x-msvideo" ||
                             video.type == "video/x-matroska"
@@ -113,13 +109,14 @@ class Dubbindo : MainAPI() {
 						newExtractorLink(
 							this.name,
 							this.name,
-							video.src.toString()
+							video.src.toString(),
+                            null
 						){
 							this.quality = video.res?.toIntOrNull() ?: Qualities.Unknown.value
 						}
 					)
             } else {
-                loadExtractor(video.src ?: return@map, "", subtitleCallback, callback)
+                loadExtractor(video.src ?: return@amap, subtitleCallback, callback)
             }
         }
 
@@ -127,8 +124,8 @@ class Dubbindo : MainAPI() {
     }
 
     data class Video(
-            val src: String? = null,
-            val res: String? = null,
-            val type: String? = null,
+            @JsonProperty("src") val src: String? = null,
+            @JsonProperty("res") val res: String? = null,
+            @JsonProperty("type") val type: String? = null,
     )
 }

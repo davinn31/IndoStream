@@ -1,6 +1,5 @@
 package com.pencurimovie
 
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addActors
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
@@ -30,71 +29,64 @@ class Pencurimovie : MainAPI() {
             )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data}/page/$page", timeout = 50L).document
+        val document = app.get("$mainUrl/${request.data}/page/$page").document
         val home = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
 
-        return newHomePageResponse(
-                list = HomePageList(name = request.name, list = home, isHorizontalImages = false),
-                hasNext = true
-        )
+        return newHomePageResponse(request.name, home)
     }
 
-    private fun Element.toSearchResult(): SearchResponse {
-        val title = this.select("a").attr("oldtitle").substringBefore("(")
-        val href = fixUrl(this.select("a").attr("href"))
-        val posterUrl = fixUrlNull(this.select("a img").attr("data-original"))
+    private fun Element.toSearchResult(): SearchResponse? {
+        val title = this.selectFirst("a")?.attr("oldtitle")?.substringBefore("(") ?: return null
+        val href = fixUrl(this.selectFirst("a")!!.attr("href"))
+        val posterUrl = fixUrlNull(this.selectFirst("a img")?.attr("data-original"))
         val quality = getQualityFromString(this.select("span.mli-quality").text())
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
-            this.quality = quality
+            addQuality(quality.toString())
         }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("${mainUrl}?s=$query", timeout = 50L).document
-        val results = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
-        return results
+        val document = app.get("${mainUrl}?s=$query").document
+        return document.select("div.ml-item").mapNotNull { it.toSearchResult() }
     }
 
     override suspend fun load(url: String): LoadResponse {
-        val document = app.get(url, timeout = 50L).document
+        val document = app.get(url).document
         val title =
                 document.selectFirst("div.mvic-desc h3")
                         ?.text()
                         ?.trim()
-                        .toString()
-                        .substringBefore("(")
-        val poster = document.select("meta[property=og:image]").attr("content")
+                        ?.substringBefore("(")
+                        ?: ""
+        val poster = document.selectFirst("meta[property=og:image]")?.attr("content")
         val description = document.selectFirst("div.desc p.f-desc")?.text()?.trim()
         val tvtag = if (url.contains("series")) TvType.TvSeries else TvType.Movie
-        val trailer = document.select("meta[itemprop=embedUrl]").attr("content")
-        val genre = document.select("div.mvic-info p:contains(Genre)").select("a").map { it.text() }
-        val actors =
-                document.select("div.mvic-info p:contains(Actors)").select("a").map { it.text() }
+        val trailer = document.selectFirst("meta[itemprop=embedUrl]")?.attr("content")
+        val genre = document.select("div.mvic-info p:contains(Genre) a").map { it.text() }
+        val actors = document.select("div.mvic-info p:contains(Actors) a").map { it.text() }
         val year =
-                document.select("div.mvic-info p:contains(Release)")
-                        .select("a")
-                        .text()
-                        .toIntOrNull()
+                document.selectFirst("div.mvic-info p:contains(Release) a")
+                        ?.text()
+                        ?.toIntOrNull()
         val recommendation = document.select("div.ml-item").mapNotNull { it.toSearchResult() }
+        
         return if (tvtag == TvType.TvSeries) {
             val episodes = mutableListOf<Episode>()
-            document.select("div.tvseason").amap { info ->
+            document.select("div.tvseason").forEach { info ->
                 val season =
-                        info.select("strong").text().substringAfter("Season").trim().toIntOrNull()
+                        info.selectFirst("strong")?.text()?.substringAfter("Season")?.trim()?.toIntOrNull()
                 info.select("div.les-content a").forEach {
-                    Log.d("Phis", "$it")
-                    val name = it.select("a").text().substringAfter("-").trim()
-                    val href = it.select("a").attr("href")
+                    val name = it.text().substringAfter("-").trim()
+                    val href = it.attr("href")
                     val rawepisode =
-                            it.select("a")
-                                    .text()
+                            it.text()
                                     .substringAfter("Episode")
                                     .substringBefore("-")
                                     .trim()
                                     .toIntOrNull()
                     episodes.add(
-                            newEpisode(data = href){
+                            newEpisode(href){
 								this.episode = rawepisode
 								this.name = name
 								this.season = season
@@ -132,7 +124,7 @@ class Pencurimovie : MainAPI() {
             callback: (ExtractorLink) -> Unit
     ): Boolean {
         val document = app.get(data).document
-        document.select("div.movieplay iframe").forEach {
+        document.select("div.movieplay iframe").amap {
             val href = it.attr("data-src")
             loadExtractor(href, subtitleCallback, callback)
         }

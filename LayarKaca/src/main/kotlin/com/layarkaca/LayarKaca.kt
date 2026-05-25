@@ -76,12 +76,12 @@ class LayarKaca : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val mainUrl = "https://tv14.nontondrama.click"
+        val searchUrl = "https://tv14.nontondrama.click"
         val encodedQuery = withContext(Dispatchers.IO) {
             URLEncoder.encode(query, StandardCharsets.UTF_8.toString())
         }
         val document =
-                app.get("$mainUrl/search.php?s=$query#gsc.tab=0&gsc.q=$encodedQuery&gsc.page=1")
+                app.get("$searchUrl/search.php?s=$query#gsc.tab=0&gsc.q=$encodedQuery&gsc.page=1")
                         .document
         return document.select("div.search-item").mapNotNull {
             val title = it.selectFirst("a")?.attr("title") ?: ""
@@ -95,7 +95,7 @@ class LayarKaca : MainAPI() {
         val fixUrl = getProperLink(url)
         val document = app.get(fixUrl ?: return null).document
 
-        val title = document.selectFirst("li.last > span[itemprop=name]")?.text()?.trim().toString()
+        val title = document.selectFirst("li.last > span[itemprop=name]")?.text()?.trim() ?: ""
         val poster = fixUrl(document.select("img.img-thumbnail").attr("src"))
         val tags = document.select("div.content > div:nth-child(5) > h3 > a").map { it.text() }
 
@@ -104,8 +104,7 @@ class LayarKaca : MainAPI() {
                         .find(document.select("div.content > div:nth-child(7) > h3").text().trim())
                         ?.groupValues
                         ?.get(1)
-                        .toString()
-                        .toIntOrNull()
+                        ?.toIntOrNull()
         val tvType =
                 if (document.select("div.serial-wrapper").isNotEmpty()) TvType.TvSeries
                 else TvType.Movie
@@ -119,9 +118,9 @@ class LayarKaca : MainAPI() {
                 }
 
         val recommendations =
-                document.select("div.row.item-media").map {
-                    val recName = it.selectFirst("h3")?.text()?.trim().toString()
-                    val recHref = it.selectFirst(".content-media > a")!!.attr("href")
+                document.select("div.row.item-media").mapNotNull {
+                    val recName = it.selectFirst("h3")?.text()?.trim() ?: return@mapNotNull null
+                    val recHref = it.selectFirst(".content-media > a")?.attr("href") ?: return@mapNotNull null
                     val recPosterUrl =
                             fixUrl(
                                     it.selectFirst(".poster-media > a > img")
@@ -183,7 +182,7 @@ class LayarKaca : MainAPI() {
     ): Boolean {
 
         val document = app.get(data).document
-        document.select("ul#loadProviders > li").map { fixUrl(it.select("a").attr("href")) }.forEach {
+        document.select("ul#loadProviders > li").map { fixUrl(it.select("a").attr("href")) }.amap {
             loadExtractor(it.getIframe(), "https://nganunganu.sbs", subtitleCallback, callback)
         }
 
